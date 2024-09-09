@@ -1,15 +1,15 @@
 /**
- * @file    SerialPort_write.c
+ * @file    fork-uart.c
  * 
- * @brief Serial Port Programming in C (Serial Port Write)  
+ * @brief Serial Port Programming in C
  * Non Cannonical mode 
  * Sellecting the Serial port Number on Linux   
  * /dev/ttyUSBx - when using USB  to Serial Converter, where x can be 0,1,2...etc  
  * /dev/ttySx   - for PC hardware based Serial ports, where x can be 0,1,2...etc 
  * termios structure -  /usr/include/asm-generic/termbits.h  
  * use "man termios" to get more info about  termios structure 
- * @author  Kevin Cotton
- * @date    2024-08-02
+ * @author  Alexandre Dionne
+ * @date    2024-10-07
  */
 #define _GNU_SOURCE
 
@@ -18,6 +18,12 @@
 #include <termios.h> // POSIX Terminal Control Definitions
 #include <unistd.h>  // UNIX Standard Definitions
 #include <errno.h>   // ERROR Number Definitions
+#include <sys/wait.h> 
+
+
+void Initialise_PortUART(void);
+void codeDuProcessusEnfant(void);
+void codeDuProcessusParent(void);
 
 // device port série à utiliser 
 //const char *portTTY = "/dev/ttyGS0"; 
@@ -29,13 +35,57 @@ const char *portTTY = "/dev/ttyS1";
 //const char *portTTY = "/dev/ttyS5";
 //const char *portTTY = "/dev/ttyUSB0"; // ttyUSB0 is the FT232 based USB2SERIAL Converter
 
-void main(void)
-	{
-	int fd; //File Descriptor
-	
-	printf("\n Ecriture Port Serie");
+int fd; // File Descriptor
 
-	// Opening the Serial Port 
+void main (void)
+{
+	Initialise_PortUART();
+  	pid_t pid;
+  	pid = fork();
+
+	if(pid == 0)
+    {
+        codeDuProcessusEnfant();
+    }
+
+    // Appel fonction Parent
+    else
+    {
+        codeDuProcessusParent();
+    }
+	wait(NULL);
+}
+
+void codeDuProcessusParent(void)
+{
+	char read_buffer = '0';  
+	while(read_buffer != '!')
+	{
+		tcflush(fd, TCIFLUSH);  // Discards old data in the rx buffer
+		read(fd, &read_buffer, 1); // Read the data 
+		printf("%c", read_buffer);
+		
+	}
+}
+
+
+void codeDuProcessusEnfant(void)
+{
+	char cRecu = '0';
+	while(cRecu != 'q')
+	{
+		write(fd, &cRecu, 1); // use write() to send data to port 
+							  // "fd"                   - file descriptor pointing to the opened serial port
+							  // "write_buffer"         - address of the buffer containing data
+							  // "sizeof(write_buffer)" - No of bytes to write 
+	    cRecu = getchar();										   
+	}
+}
+
+
+void Initialise_PortUART(void)
+{
+    // Opening the Serial Port 
 	fd = open(portTTY, O_RDWR | O_NOCTTY | O_NDELAY);
 								// O_RDWR Read/Write access to serial port           
 								// O_NOCTTY - No terminal will control the process   
@@ -66,20 +116,10 @@ void main(void)
 
 	SerialPortSettings.c_oflag &= ~OPOST;	//No Output Processing
 
+    // Setting Time outs 
+	SerialPortSettings.c_cc[VMIN] = 1; // Read at least X character(s) 
+	SerialPortSettings.c_cc[VTIME] = 0; // Wait 3sec (0 for indefinetly) 
+
 	if((tcsetattr(fd, TCSANOW, &SerialPortSettings)) != 0) // Set the attributes to the termios structure
 		printf("\n  Erreur! configuration des attributs du port serie");
-
-	// Write data to serial port 
-	char write_buffer[] = "ABCDE12345";	// Buffer containing characters to write into port
-	int  bytes_written  = 0;  	// Value for storing the number of bytes written to the port 
-
-	bytes_written = write(fd, write_buffer, sizeof(write_buffer)); // use write() to send data to port 
-										// "fd"                   - file descriptor pointing to the opened serial port
-										//	"write_buffer"         - address of the buffer containing data
-										// "sizeof(write_buffer)" - No of bytes to write 
-	printf("\n Ecriture de %d octets : %s ecrit sur le port %s", bytes_written, write_buffer, portTTY);
-	printf("\n");
-
-	close(fd); // Close the Serial port 
-
-	}
+}
