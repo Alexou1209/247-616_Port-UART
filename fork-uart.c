@@ -46,12 +46,14 @@ void main (void)
 
 	if(pid == 0)
     {
+		printf("Je suis le processus Fils, j'écrit sur le port série ce que j'entends sur la console (terminal)\n");
         codeDuProcessusEnfant();
     }
 
     // Appel fonction Parent
     else
     {
+		printf("Je suis le processus Père, j'écrit sur la console (terminal) ce que j'entends sur le port série\n");
         codeDuProcessusParent();
     }
 	wait(NULL);
