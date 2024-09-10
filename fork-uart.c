@@ -48,6 +48,7 @@ void main (void)
     {
 		printf("Je suis le processus Fils, j'écrit sur le port série ce que j'entends sur la console (terminal)\n");
         codeDuProcessusEnfant();
+		printf("Fin du Processus fils\n");
     }
 
     // Appel fonction Parent
@@ -55,6 +56,7 @@ void main (void)
     {
 		printf("Je suis le processus Père, j'écrit sur la console (terminal) ce que j'entends sur le port série\n");
         codeDuProcessusParent();
+		printf("Fin du Processus pere\n");
     }
 	wait(NULL);
 }
